@@ -24,7 +24,6 @@ class AccountMove(models.Model):
     reference_type = fields.Selection(
         selection=[("none", "Free Reference"), ("structured", "Structured Reference")],
         string="Reference Type",
-        required=True,
         readonly=True,
         states={"draft": [("readonly", False)]},
         default="none",
@@ -48,6 +47,9 @@ class AccountMove(models.Model):
         # other important fields are set by the inherit of create
         # in account_payment_order.py
         return vals
+
+    def get_account_payment_domain(self, payment_mode):
+        return [("payment_mode_id", "=", payment_mode.id), ("state", "=", "draft")]
 
     def create_account_payment_line(self):
         apoo = self.env["account.payment.order"]
@@ -81,11 +83,7 @@ class AccountMove(models.Model):
                 raise UserError(_("No Payment Mode on invoice %s") % move.name)
             for payment_mode in payment_modes:
                 payorder = apoo.search(
-                    [
-                        ("payment_mode_id", "=", payment_mode.id),
-                        ("state", "=", "draft"),
-                    ],
-                    limit=1,
+                    move.get_account_payment_domain(payment_mode), limit=1
                 )
                 new_payorder = False
                 if not payorder:
